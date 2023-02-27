@@ -51,8 +51,6 @@ public class AuthenticationRestController {
                 throw new UsernameNotFoundException("User with username: " + username + " not found");
             }
 
-
-
             Map<Object, Object> response = new HashMap<>();
             response.put("username", username);
 

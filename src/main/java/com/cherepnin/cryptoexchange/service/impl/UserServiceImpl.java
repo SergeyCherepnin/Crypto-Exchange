@@ -1,10 +1,13 @@
 package com.cherepnin.cryptoexchange.service.impl;
 
-import com.cherepnin.cryptoexchange.models.*;
 import com.cherepnin.cryptoexchange.models.Currency;
+import com.cherepnin.cryptoexchange.models.Role;
+import com.cherepnin.cryptoexchange.models.User;
+import com.cherepnin.cryptoexchange.models.UserCurrency;
+import com.cherepnin.cryptoexchange.repository.CurrencyRepository;
 import com.cherepnin.cryptoexchange.repository.RoleRepository;
+import com.cherepnin.cryptoexchange.repository.UserCurrencyRepository;
 import com.cherepnin.cryptoexchange.repository.UserRepository;
-import com.cherepnin.cryptoexchange.repository.WalletRepository;
 import com.cherepnin.cryptoexchange.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,18 +19,20 @@ import java.util.*;
 @Slf4j
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
-
-    private final WalletRepository walletRepository;
+    private final UserCurrencyRepository userCurrencyRepository;
     private final RoleRepository roleRepository;
+    private final CurrencyRepository currencyRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     public UserServiceImpl(UserRepository userRepository,
-                           WalletRepository walletRepository,
+                           UserCurrencyRepository userCurrencyRepository,
                            RoleRepository roleRepository,
+                           CurrencyRepository currencyRepository,
                            BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.walletRepository = walletRepository;
+        this.userCurrencyRepository = userCurrencyRepository;
         this.roleRepository = roleRepository;
+        this.currencyRepository = currencyRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -37,10 +42,17 @@ public class UserServiceImpl implements UserService {
         List<Role> userRoles = new ArrayList<>();
         userRoles.add(roleUser);
 
+        Currency rub = currencyRepository.findByName("RUB");
+        Currency btc = currencyRepository.findByName("BTC");
+        Currency ton = currencyRepository.findByName("TON");
+
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRoles(userRoles);
-        user.setWallet(new Wallet());
-        user.getWallet().setWalletKey(secretKey);
+        user.setWallet(secretKey);
+        user.addCurrency(rub, 0.00);
+        user.addCurrency(btc, 0.00);
+        user.addCurrency(ton, 0.00);
+
         User registeredUser = userRepository.save(user);
 
         log.info("IN register - user: " + registeredUser + " successfully registered");
@@ -53,60 +65,94 @@ public class UserServiceImpl implements UserService {
         if (result == null) {
             log.warn("IN findByUsername - no user found by name: " + name);
         }
+
         log.info("IN findByUserName - user: " + result + " found by username");
         return result;
     }
 
     @Override
     public Map<String, Double> getWalletBalance(String walletKey) {
-        Set<WalletCurrencies> walletCurrencies = walletRepository.getWalletCurrenciesByWalletWalletKey(walletKey);
-
-        if (walletCurrencies == null) {
-            log.warn("IN getWalletBalance - no wallet by secret_key: " + walletKey);
+        User user = userRepository.findByWallet(walletKey);
+        if (user == null) {
+            log.warn("IN getWalletBalance - no user found by walletKey: " + walletKey);
         }
 
-        Map<String, Double> walletBalance = new HashMap<>();
+        Map<String, Double> balance = new HashMap<>();
 
-        for (WalletCurrencies element : walletCurrencies) {
-            walletBalance.put(element.getCurrency().getName(), element.getAmount());
+        List<UserCurrency> userCurrencies = user.getCurrencies();
+
+        for (UserCurrency userCurrency : userCurrencies) {
+            balance.put(userCurrency.getCurrency().getName(), userCurrency.getAmount());
         }
-       return walletBalance;
+
+        return balance;
     }
 
     @Override
     public Map<String, Double> deposit(String walletKey, Map<String, Double> depositData) {
-        Set<WalletCurrencies> walletCurrencies = walletRepository.getWalletCurrenciesByWalletWalletKey(walletKey);
-
-        if (walletCurrencies == null) {
-            log.warn("IN deposit - no wallet by secret_key: " + walletKey);
+        User user = userRepository.findByWallet(walletKey);
+        if (user == null) {
+            log.warn("IN deposit - no user found by walletKey: " + walletKey);
         }
 
-        for (WalletCurrencies currency: walletCurrencies) {
-            String currencyName = currency.getCurrency().getName();
+        for (Map.Entry<String, Double> entry : depositData.entrySet()) {
+            for (UserCurrency wallet : user.getCurrencies()) {
+                String depositCurrency = entry.getKey();
+                String walletCurrency = wallet.getCurrency().getName();
 
-            if (depositData.containsKey(currencyName)) {
-                Double oldAmount = currency.getAmount();
-                Double newAmount = oldAmount + depositData.get(currencyName);
-                currency.setAmount(newAmount);
+                if (depositCurrency.equals(walletCurrency)) {
+                    Double oldAmount = wallet.getAmount();
+                    Double addAmount = entry.getValue();
+                    Double newAmount = oldAmount + addAmount;
+
+                    wallet.setAmount(newAmount);
+
+                    userCurrencyRepository.save(wallet);
+                }
             }
         }
-
-        walletRepository.saveAll(walletCurrencies);
         return getWalletBalance(walletKey);
     }
 
     @Override
-    public Wallet withdrawBalance(Currency currency, Double amount, String creditCard) {
+    public Map<String, Double> withdraw(String walletKey, Map<String, Double> withDrawData) {
+        User user = userRepository.findByWallet(walletKey);
+        if (user == null) {
+            log.warn("IN withdraw - no user found by walletKey: " + walletKey);
+        }
+
+        for (Map.Entry<String, Double> entry : withDrawData.entrySet()) {
+            for (UserCurrency wallet : user.getCurrencies()) {
+                String withdrawCurrency = entry.getKey();
+                String walletCurrency = wallet.getCurrency().getName();
+
+                if (withdrawCurrency.equals(walletCurrency)) {
+                    Double oldAmount = wallet.getAmount();
+                    Double withdrawAmount = entry.getValue();
+
+                    if (oldAmount < withdrawAmount) {
+                        throw new RuntimeException("Не достаточно средств на счету!");
+                    }
+
+                    Double newAmount = oldAmount - withdrawAmount;
+                    wallet.setAmount(newAmount);
+
+                    userCurrencyRepository.save(wallet);
+                }
+            }
+        }
+        return getWalletBalance(walletKey);
+    }
+
+/*
+    @Override
+    public Map<java.util.Currency, Double> exchangeRates(java.util.Currency currency) {
         return null;
     }
 
     @Override
-    public Map<Currency, Double> exchangeRates(Currency currency) {
-        return null;
-    }
-
-    @Override
-    public String currencyExchange(Currency currencyFrom, Currency currencyTo, Double amount) {
-        return null;
-    }
+    public String currencyExchange(java.util.Currency currencyFrom, java.util.Currency currencyTo, Double amount) {
+        return null;*/
 }
+
+

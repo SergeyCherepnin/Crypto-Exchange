@@ -9,8 +9,9 @@ import lombok.ToString;
 @Setter
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class DepositRequestDto {
-    private String secret_key;
-    private String currency;
-    private Double count;
+public class WithdrawRequestDto {
+    String secret_key;
+    String currency;
+    Double count;
+    String credit_card;
 }
