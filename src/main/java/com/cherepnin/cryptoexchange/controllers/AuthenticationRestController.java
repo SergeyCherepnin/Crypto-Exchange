@@ -51,8 +51,11 @@ public class AuthenticationRestController {
                 throw new UsernameNotFoundException("User with username: " + username + " not found");
             }
 
+            String token = jwtTokenProvider.createToken(user.getUsername());
+
             Map<Object, Object> response = new HashMap<>();
             response.put("username", username);
+            response.put("token", token);
 
             return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
@@ -67,13 +70,11 @@ public class AuthenticationRestController {
         user.setEmail(registerRequestDto.getEmail());
         user.setPassword(registerRequestDto.getPassword());
 
-        String token = jwtTokenProvider.createToken(user.getUsername());
         String secretKey = UUID.randomUUID().toString();
 
         userService.register(user, secretKey);
 
         Map<String, String> response = new HashMap<>();
-        response.put("token", token);
         response.put("secret_key", secretKey);
 
         return ResponseEntity.ok(response);
