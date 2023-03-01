@@ -189,5 +189,8 @@ RequestBody: `{
 Response: `{
     "transaction_count": 17
 }`
-
+__________________________________________________________________________________________________________________________________________________
+***403 Forbidden***
+При попытке пользователя выполнить методы админа:
+![Transaction_count](https://github.com/SergeyCherepnin/Crypto-Exchange/blob/master/screenshots/forbidden_403.png)
 
