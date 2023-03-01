@@ -8,7 +8,6 @@ import lombok.ToString;
 @Setter
 @ToString
 public class ExchangeRequestDto {
-    private String secret_key;
     private String currency_from;
     private String currency_to;
     private Double amount;

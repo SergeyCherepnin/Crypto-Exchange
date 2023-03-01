@@ -13,7 +13,6 @@ import java.util.List;
 @Setter
 @ToString
 public class Role {
-
     @Id
     @Column(name = "id")
     Long id;

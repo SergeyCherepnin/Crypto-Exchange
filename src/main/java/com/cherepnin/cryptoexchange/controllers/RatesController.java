@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.Map;
 
 @RestController()
@@ -21,11 +22,11 @@ public class RatesController {
     }
 
     @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
-    public ResponseEntity getRates(@RequestBody RatesRequestDto ratesRequestDto) {
-        String secretKey = ratesRequestDto.getSecret_key();
+    public ResponseEntity getRates(@RequestBody RatesRequestDto ratesRequestDto,
+                                   Principal principal) {
         String currency = ratesRequestDto.getCurrency();
 
-        Map<String, Double> response = jointService.getCurrencyRates(secretKey, currency);
+        Map<String, Double> response = jointService.getCurrencyRates(principal, currency);
 
         return ResponseEntity.ok(response);
     }

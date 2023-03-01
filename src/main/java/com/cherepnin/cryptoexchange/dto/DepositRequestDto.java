@@ -10,7 +10,6 @@ import lombok.ToString;
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DepositRequestDto {
-    private String secret_key;
     private String currency;
     private Double count;
 }

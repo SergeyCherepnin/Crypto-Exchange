@@ -9,6 +9,7 @@ import com.cherepnin.cryptoexchange.repository.UserRepository;
 import com.cherepnin.cryptoexchange.service.JointService;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,12 +28,12 @@ public class JointServiceImpl implements JointService {
     }
 
     @Override
-    public Map<String, Double> getCurrencyRates(String walletKey, String currencyName) {
-        User user = userRepository.findByWallet(walletKey);
+    public Map<String, Double> getCurrencyRates(Principal principal, String currencyName) {
+        User user = userRepository.findByUsername(principal.getName());
         Currency currency = currencyRepository.findByName(currencyName);
 
         if (user == null || currency == null) {
-            throw new RuntimeException("Пожалуйста, введите правильный ключ и валюту");
+            throw new RuntimeException("Такого пользователя или валюты не существует");
         }
 
         Map<String, Double> rates = new HashMap<>();
@@ -41,8 +42,8 @@ public class JointServiceImpl implements JointService {
             ExchangeRates rubToBtc = exchangeRatesRepository.findByName("rubToBtc");
             ExchangeRates rubToTon = exchangeRatesRepository.findByName("rubToTon");
 
-            rates.put("rubToBtc", rubToBtc.getRate());
-            rates.put("rubToTon", rubToTon.getRate());
+            rates.put("BTC", rubToBtc.getRate());
+            rates.put("TON", rubToTon.getRate());
 
             return rates;
         }
@@ -51,8 +52,8 @@ public class JointServiceImpl implements JointService {
             ExchangeRates btcToRub = exchangeRatesRepository.findByName("btcToRub");
             ExchangeRates btcToTon = exchangeRatesRepository.findByName("btcToTon");
 
-            rates.put("btcToRub", btcToRub.getRate());
-            rates.put("btcToTon", btcToTon.getRate());
+            rates.put("RUB", btcToRub.getRate());
+            rates.put("TON", btcToTon.getRate());
 
             return rates;
         }
@@ -61,8 +62,8 @@ public class JointServiceImpl implements JointService {
             ExchangeRates tonToRub = exchangeRatesRepository.findByName("tonToRub");
             ExchangeRates tonToBtc = exchangeRatesRepository.findByName("tonToBtc");
 
-            rates.put("tonToRub", tonToRub.getRate());
-            rates.put("tonToBtc", tonToBtc.getRate());
+            rates.put("RUB", tonToRub.getRate());
+            rates.put("BTC", tonToBtc.getRate());
         }
 
         return rates;

@@ -2,7 +2,6 @@ package com.cherepnin.cryptoexchange.controllers;
 
 import com.cherepnin.cryptoexchange.dto.AuthenticationRequestDto;
 import com.cherepnin.cryptoexchange.dto.RegisterRequestDto;
-import com.cherepnin.cryptoexchange.models.Role;
 import com.cherepnin.cryptoexchange.models.User;
 import com.cherepnin.cryptoexchange.security.jwt.JwtTokenProvider;
 import com.cherepnin.cryptoexchange.service.UserService;
@@ -18,8 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.jws.soap.SOAPBinding;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(value = "/auth")
@@ -44,7 +44,8 @@ public class AuthenticationRestController {
     public ResponseEntity login(@RequestBody AuthenticationRequestDto requestDto) {
         try {
             String username = requestDto.getUsername();
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, requestDto.getPassword()));
+            authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(username, requestDto.getPassword()));
             User user = userService.findByUserName(username);
 
             if (user == null) {
@@ -70,12 +71,12 @@ public class AuthenticationRestController {
         user.setEmail(registerRequestDto.getEmail());
         user.setPassword(registerRequestDto.getPassword());
 
-        String secretKey = UUID.randomUUID().toString();
+        String token = jwtTokenProvider.createToken(user.getUsername());
 
-        userService.register(user, secretKey);
+        userService.register(user);
 
         Map<String, String> response = new HashMap<>();
-        response.put("secret_key", secretKey);
+        response.put("token", token);
 
         return ResponseEntity.ok(response);
     }

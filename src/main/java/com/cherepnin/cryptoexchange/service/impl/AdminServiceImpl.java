@@ -3,51 +3,53 @@ package com.cherepnin.cryptoexchange.service.impl;
 import com.cherepnin.cryptoexchange.models.Currency;
 import com.cherepnin.cryptoexchange.models.ExchangeRates;
 import com.cherepnin.cryptoexchange.models.User;
-import com.cherepnin.cryptoexchange.repository.CurrencyRepository;
-import com.cherepnin.cryptoexchange.repository.ExchangeRatesRepository;
-import com.cherepnin.cryptoexchange.repository.UserRepository;
+import com.cherepnin.cryptoexchange.repository.*;
 import com.cherepnin.cryptoexchange.service.AdminService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.security.Principal;
+import java.util.*;
 
 @Slf4j
 @Service
 public class AdminServiceImpl implements AdminService {
     private final UserRepository userRepository;
     private final ExchangeRatesRepository exchangeRatesRepository;
-
+    private final UserCurrencyRepository userCurrencyRepository;
     private final CurrencyRepository currencyRepository;
+    private final TransactionRepository transactionRepository;
 
     public AdminServiceImpl(UserRepository userRepository,
                             ExchangeRatesRepository exchangeRatesRepository,
-                            CurrencyRepository currencyRepository) {
+                            UserCurrencyRepository userCurrencyRepository,
+                            CurrencyRepository currencyRepository,
+                            TransactionRepository transactionRepository) {
         this.userRepository = userRepository;
         this.exchangeRatesRepository = exchangeRatesRepository;
+        this.userCurrencyRepository = userCurrencyRepository;
         this.currencyRepository = currencyRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @Transactional
     @Override
-    public Map<String, Double> updateRates(String walletKey,
-                                           String baseCurrency,
+    public Map<String, Double> updateRates(Principal principal, String baseCurrency,
                                            Map<String,
                                            Double> newRates) {
-        User user = userRepository.findByWallet(walletKey);
+        User user = userRepository.findByUsername(principal.getName());
 
         if (user == null) {
-            log.warn("IN updateRates - no user found by walletKey: "  + walletKey);
-            throw new RuntimeException("Пользователь с таким ключом не найден");
+            log.warn("IN updateRates - no user found");
+            throw new RuntimeException("Пользователь не найден");
         }
 
         Map<String, Double> result = new HashMap<>();
 
         Currency mainCurrency = currencyRepository.findByName(baseCurrency);
 
+        //TODO сделать рефакторинг метода
         for (Map.Entry<String, Double> entry : newRates.entrySet()) {
             String currencyName = entry.getKey();
             Double newRate = entry.getValue();
@@ -123,5 +125,42 @@ public class AdminServiceImpl implements AdminService {
         }
 
         return result;
+    }
+
+    @Override
+    public Map<String, Double> currencyTotalAmount(Principal principal, String currencyName) {
+        User user = userRepository.findByUsername(principal.getName());
+        Currency currency = currencyRepository.findByName(currencyName);
+
+        if (user == null || currency == null) {
+            log.warn("IN totalAmount - no user or currency found");
+            throw new RuntimeException("Нет пользователя или валлюты с таким именем");
+        }
+
+        List<Double> allAmounts = userCurrencyRepository.findAmountsByCurrencyId(currency.getId());
+        double total = 0;
+
+        for(Double amount : allAmounts) {
+            total += amount;
+        }
+
+        Map<String, Double> result = new HashMap<>();
+        result.put(currency.getName(), total);
+
+        return result;
+    }
+
+    @Override
+    public Long getTransactions(Principal principal, Date from, Date to) {
+        User user = userRepository.findByUsername(principal.getName());
+
+        if (user == null) {
+            log.warn("IN updateRates - no user found");
+            throw new RuntimeException("Пользователь не найден");
+        }
+
+        long count = transactionRepository.findAllByCreatedAfterAndCreatedBefore(from, to);
+
+        return count;
     }
 }

@@ -10,7 +10,6 @@ import lombok.ToString;
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WithdrawRequestDto {
-    String secret_key;
     String currency;
     Double count;
     String credit_card;

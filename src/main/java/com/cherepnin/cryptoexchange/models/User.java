@@ -48,10 +48,6 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<UserCurrency> currencies = new ArrayList<>();
 
-
-    @Column(name = "key", unique = true)
-    private String wallet;
-
     public User() {}
 
     public void addCurrency(Currency currency, Double amount) {

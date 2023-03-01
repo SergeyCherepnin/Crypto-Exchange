@@ -9,8 +9,7 @@ import lombok.ToString;
 @Setter
 @ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RatesUpdateDto {
-    String secret_key;
+public class UpdateRatesRequestDto {
     String base_currency;
     Double btc;
     Double rub;
